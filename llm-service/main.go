@@ -3,48 +3,81 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	openrouter "github.com/revrost/go-openrouter"
 )
 
 var (
-	fullPrompt string
-	client     *openrouter.Client
+	fullPrompt   string
+	client       *openrouter.Client
+	stubResponse json.RawMessage
 )
 
 func main() {
-	systemPromptBytes, err := ioutil.ReadFile("systemprompt.txt")
-	if err != nil {
-		panic(fmt.Sprintf("Ошибка чтения systemprompt.txt: %v", err))
+	apiKey := strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
+	rawStub := strings.TrimSpace(os.Getenv("LLM_STUB_RESPONSE"))
+
+	if rawStub == "" {
+		rawStub = `{"classification":"general","model_answer":{"summary":"Demo response","priority":"normal","next_steps":["Follow up with the sender","Schedule the requested call"]}}`
 	}
 
-	orgBytes, err := ioutil.ReadFile("org.json")
+	if !isValidJSON(rawStub) {
+		log.Fatalf("LLM_STUB_RESPONSE is not valid JSON")
+	}
+
+	stubResponse = json.RawMessage(rawStub)
+
+	if apiKey == "" {
+		log.Print("OPENROUTER_API_KEY not provided — running in stub mode")
+	} else {
+		client = openrouter.NewClient(
+			apiKey,
+			openrouter.WithXTitle("My App"),
+			openrouter.WithHTTPReferer("https://myapp.com"),
+		)
+	}
+	systemPromptBytes, err := os.ReadFile("systemprompt.txt")
 	if err != nil {
-		panic(fmt.Sprintf("Ошибка чтения org.json: %v", err))
+		log.Fatalf("Ошибка чтения systemprompt.txt: %v", err)
+	}
+
+	orgBytes, err := os.ReadFile("org.json")
+	if err != nil {
+		log.Fatalf("Ошибка чтения org.json: %v", err)
 	}
 
 	fullPrompt = strings.Replace(string(systemPromptBytes), "<ORGANIZATION_JSON>", string(orgBytes), 1)
 
-	client = openrouter.NewClient(
-		"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",
-		openrouter.WithXTitle("My App"),
-		openrouter.WithHTTPReferer("https://myapp.com"),
-	)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/process", processHandler)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 
-	http.HandleFunc("/process", processHandler)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	fmt.Println("Сервер запущен на :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic(err)
+	addr := ":" + strings.TrimPrefix(port, ":")
+	log.Printf("Сервер запущен на %s", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Fatalf("failed to start server: %v", err)
 	}
 }
 
 func processHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "empty body", http.StatusBadRequest)
@@ -52,6 +85,11 @@ func processHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userInput := string(body)
+
+	if client == nil {
+		writeStub(w)
+		return
+	}
 
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
@@ -65,7 +103,8 @@ func processHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("ChatCompletion error: %v", err), http.StatusInternalServerError)
+		log.Printf("ChatCompletion error, falling back to stub: %v", err)
+		writeStub(w)
 		return
 	}
 
@@ -78,7 +117,13 @@ func processHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(jsonOnly))
+	_, _ = w.Write([]byte(jsonOnly))
+}
+
+func writeStub(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-LLM-Source", "stub")
+	_, _ = w.Write(stubResponse)
 }
 
 func extractJSON(text string) string {
