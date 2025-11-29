@@ -9,8 +9,8 @@ from openai import OpenAI
 
 # Загрузка переменных окружения
 load_dotenv()
-FOLDER_ID = os.getenv("folder_id")
-API_KEY = os.getenv("api_key")
+FOLDER_ID = os.getenv("FOLDER_ID")
+API_KEY = os.getenv("API_KEY")
 
 # Инициализация клиента
 client = OpenAI(

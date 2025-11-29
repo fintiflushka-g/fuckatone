@@ -3,19 +3,26 @@ FROM golang:1.25 AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+# Копируем зависимости и качаем их
+COPY messages-service/go.mod messages-service/go.sum ./messages-service/
+WORKDIR /app/messages-service
 RUN go mod download
 
-COPY messages-service ./messages-service
+# Копируем весь код
+COPY messages-service ./ 
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/bin/messages-service ./messages-service/cmd
+# Собираем бинарник
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/bin/messages-service ./cmd
 
 # Runtime stage
 FROM gcr.io/distroless/base-debian12
 
 WORKDIR /app/messages-service
 
-COPY --from=builder /app/bin/messages-service ./messages-service
+# Копируем бинарник
+COPY --from=builder /app/bin/messages-service .
+
+# Копируем конфиги
 COPY messages-service/configs ./configs
 
 EXPOSE 8080

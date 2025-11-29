@@ -54,10 +54,11 @@ services:
 
   llm-service:
     build:
-      context: ./llm-service
+      context: ./model2
       dockerfile: Dockerfile
     environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required for llm-service}
+      FOLDER_ID: ${FOLDER_ID:?FOLDER_ID is required}
+      API_KEY: ${API_KEY:?API_KEY is required}
     ports:
       - "8081:8080"
 

@@ -3,11 +3,12 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"github.com/segmentio/kafka-go"
 	"log/slog"
 	"time"
 
-	"backend/messages-service/internal/config"
+	"github.com/segmentio/kafka-go"
+
+	"messages-service/internal/config"
 )
 
 type Producer struct {

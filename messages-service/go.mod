@@ -1,4 +1,4 @@
-module backend/messages-service
+module messages-service
 
 go 1.23.5
 

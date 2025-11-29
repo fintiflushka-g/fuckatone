@@ -1,12 +1,12 @@
 package storage
 
 import (
-	"backend/messages-service/internal/messages"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"messages-service/internal/messages"
 )
 
 type Repo struct {

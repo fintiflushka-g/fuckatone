@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"backend/messages-service/internal/messages"
+	"messages-service/internal/messages"
 )
 
 type Handler struct {

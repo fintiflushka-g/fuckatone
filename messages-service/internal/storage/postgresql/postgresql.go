@@ -1,12 +1,13 @@
 package postgresql
 
 import (
-	"backend/messages-service/internal/config"
 	"context"
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
+	"messages-service/internal/config"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 type Storage struct {

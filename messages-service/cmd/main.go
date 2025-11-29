@@ -1,15 +1,15 @@
 package main
 
 import (
-	"backend/messages-service/internal/config"
-	"backend/messages-service/internal/kafka"
-	"backend/messages-service/internal/logger"
-	"backend/messages-service/internal/messages"
-	"backend/messages-service/internal/storage"
-	"backend/messages-service/internal/storage/postgresql"
-	messageshttp "backend/messages-service/internal/transport/http/messages"
 	"context"
 	"log/slog"
+	"messages-service/internal/config"
+	"messages-service/internal/kafka"
+	"messages-service/internal/logger"
+	"messages-service/internal/messages"
+	"messages-service/internal/storage"
+	"messages-service/internal/storage/postgresql"
+	messageshttp "messages-service/internal/transport/http/messages"
 	"net/http"
 	"os/signal"
 	"syscall"
