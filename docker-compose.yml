@@ -62,5 +62,15 @@ services:
     ports:
       - "8081:8080"
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      messages-service:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+
 volumes:
   postgres_data:
